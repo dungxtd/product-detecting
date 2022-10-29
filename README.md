@@ -1,4 +1,4 @@
-# Yolov5 object detection model deployment using flask
+# Yolov7 object detection model deployment using flask
 
 ## Web app
 
