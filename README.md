@@ -7,15 +7,6 @@ Simple app consisting of a form where you can upload an image, and see the infer
 `$ python3 webapp.py --port 5000`
 
 then visit http://localhost:5000/ in your browser:
-
-<p align="center">
-<img src="https://github.com/robmarkcole/yolov5-flask/blob/master/docs/app_form.jpg" width="450">
-</p>
-
-<p align="center">
-<img src="https://github.com/robmarkcole/yolov5-flask/blob/master/docs/app_result.jpg" width="450">
-</p>
-
 ## Rest API
 
 Simple rest API exposing the model for consumption by another service. Run:
@@ -73,9 +64,3 @@ docker build -t yolov5-flask .
 # Run
 docker run -p 5000:5000 yolov5-flask:latest
 ```
-
-## reference
-
-- https://github.com/ultralytics/yolov5
-- https://github.com/jzhang533/yolov5-flask (this repo was forked from here)
-- https://github.com/avinassh/pytorch-flask-api-heroku
