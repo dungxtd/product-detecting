@@ -27,7 +27,8 @@ opt = {
     "conf-thres": 0.1,  # confidence threshold for inference.
     "iou-thres": 0.45,  # NMS IoU threshold for inference.
     "device": '0',  # device to run our model i.e. 0 or 0,1,2,3 or cpu
-    "classes": ""  # list of classes to filter or None
+    "classes": "",  # list of classes to filter or None
+    "precision": 0
 }
 
 
@@ -108,7 +109,7 @@ def pose_model(img_bytes):
 
         for *xyxy, conf, cls in reversed(det):
             # label = f'{names[int(cls)]} {conf:.2f}'
-            if float(f'{conf:.2f}') > 0.5:
+            if float(f'{conf:.2f}') > opt["precision"]:
                 res_detected.append({
                     "label": f'{names[int(cls)]}',
                     "value": f'{conf:.2f}'
@@ -133,7 +134,7 @@ def predict():
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Flask app exposing yolov5 models")
-    parser.add_argument("--port", default=5000, type=int, help="port number")
+    parser.add_argument("--port", default=2808, type=int, help="port number")
     args = parser.parse_args()
     # load model
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")

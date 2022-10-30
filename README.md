@@ -4,18 +4,19 @@
 
 Simple app consisting of a form where you can upload an image, and see the inference result of the model in the browser. Run:
 
-`$ python3 webapp.py --port 5000`
+`$ python3 webapp.py --port 2808`
 
-then visit http://localhost:5000/ in your browser:
+then visit http://localhost:2808/ in your browser:
+
 ## Rest API
 
 Simple rest API exposing the model for consumption by another service. Run:
 
-`$ python3 app.py --port 5000`
+`$ python3 app.py --port 2808`
 
 Then use [curl](https://curl.se/) to perform a request:
 
-`$ curl -X POST -F image=@tests/zidane.jpg 'http://localhost:5000/v1/object-detection/yolov5s'`
+`$ curl -X POST -F image=@tests/zidane.jpg 'http://localhost:2808/v1/object-detection/yolov5s'`
 
 The model inference results are returned:
 
@@ -50,7 +51,7 @@ Run locally for dev, requirements mostly originate from [yolov5](https://github.
 - `python3 -m venv venv`
 - `source venv/bin/activate`
 - `(venv) $ pip install -r requirements.txt`
-- `(venv) $ python3 app.py --port 5000`
+- `(venv) $ python3 app.py --port 2808`
 
 An example python script to perform inference using [requests](https://docs.python-requests.org/en/master/) is given in `tests/test_request.py`
 
@@ -62,5 +63,5 @@ The example dockerfile shows how to expose the rest API:
 # Build
 docker build -t yolov5-flask .
 # Run
-docker run -p 5000:5000 yolov5-flask:latest
+docker run -p 2808:2808 yolov5-flask:latest
 ```
