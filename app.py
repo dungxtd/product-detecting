@@ -101,10 +101,9 @@ def pose_model(img_bytes):
 
 
 def query_firebase(val):
-    max_precision_label = re.sub(r"\_.[0]?$", '', val["max"]["label"])
+    max_precision_label = re.sub(r"_[0-9]+", '', val["max"]["label"])
     # Create a query against the collection
-    query_ref = collection.where(
-        u'Key', u'==', max_precision_label)
+    query_ref = collection.where('Key', '==', max_precision_label)
     docs = query_ref.get()
     if(len(docs) > 0):
         return docs[0]._data["Word"]
