@@ -4,6 +4,7 @@ and view the inference results on the image in the browser.
 """
 import argparse
 import io
+import re
 import os
 from PIL import Image
 import cv2
@@ -18,6 +19,17 @@ from utils.plots import plot_one_box
 from utils.torch_utils import select_device, load_classifier, time_synchronized, TracedModel
 from numpy import random
 from flask import jsonify
+from detecting_object import letterbox
+from operator import attrgetter
+import firebase_admin
+from firebase_admin import credentials
+from firebase_admin import firestore
+from search_request import request_search
+cred = credentials.Certificate("serviceAccountKey.json")
+firebase_admin.initialize_app(cred)
+
+db = firestore.client()
+collection = db.collection("product_key_search")
 app = Flask(__name__)
 
 opt = {
@@ -30,42 +42,6 @@ opt = {
     "classes": "",  # list of classes to filter or None
     "precision": 0
 }
-
-
-def letterbox(img, new_shape=(640, 640), color=(114, 114, 114), auto=True, scaleFill=False, scaleup=True, stride=32):
-    # Resize and pad image while meeting stride-multiple constraints
-    shape = img.shape[:2]  # current shape [height, width]
-    if isinstance(new_shape, int):
-        new_shape = (new_shape, new_shape)
-
-    # Scale ratio (new / old)
-    r = min(new_shape[0] / shape[0], new_shape[1] / shape[1])
-    if not scaleup:  # only scale down, do not scale up (for better test mAP)
-        r = min(r, 1.0)
-
-    # Compute padding
-    ratio = r, r  # width, height ratios
-    new_unpad = int(round(shape[1] * r)), int(round(shape[0] * r))
-    dw, dh = new_shape[1] - new_unpad[0], new_shape[0] - \
-        new_unpad[1]  # wh padding
-    if auto:  # minimum rectangle
-        dw, dh = np.mod(dw, stride), np.mod(dh, stride)  # wh padding
-    elif scaleFill:  # stretch
-        dw, dh = 0.0, 0.0
-        new_unpad = (new_shape[1], new_shape[0])
-        ratio = new_shape[1] / shape[1], new_shape[0] / \
-            shape[0]  # width, height ratios
-
-    dw /= 2  # divide padding into 2 sides
-    dh /= 2
-
-    if shape[::-1] != new_unpad:  # resize
-        img = cv2.resize(img, new_unpad, interpolation=cv2.INTER_LINEAR)
-    top, bottom = int(round(dh - 0.1)), int(round(dh + 0.1))
-    left, right = int(round(dw - 0.1)), int(round(dw + 0.1))
-    img = cv2.copyMakeBorder(
-        img, top, bottom, left, right, cv2.BORDER_CONSTANT, value=color)  # add border
-    return img, ratio, (dw, dh)
 
 
 def pose_model(img_bytes):
@@ -109,12 +85,30 @@ def pose_model(img_bytes):
 
         for *xyxy, conf, cls in reversed(det):
             # label = f'{names[int(cls)]} {conf:.2f}'
-            if float(f'{conf:.2f}') > opt["precision"]:
-                res_detected.append({
-                    "label": f'{names[int(cls)]}',
-                    "value": f'{conf:.2f}'
-                })
-    return res_detected
+            # if float(f'{conf:.2f}') > opt["precision"]:
+            res_detected.append({
+                "label": f'{names[int(cls)]}',
+                "value": float(f'{conf:.2f}')
+            })
+    if len(res_detected) > 0:
+        max_precision = res_detected[0]
+        for node in res_detected:
+            if node["value"] > max_precision["value"]:
+                max_precision = node
+    else:
+        max_precision = {}
+    return {"max": max_precision, "detected": res_detected}
+
+
+def query_firebase(val):
+    max_precision_label = re.sub(r"\_.[0]?$", '', val["max"]["label"])
+    # Create a query against the collection
+    query_ref = collection.where(
+        u'Key', u'==', max_precision_label)
+    docs = query_ref.get()
+    if(len(docs) > 0):
+        return docs[0]._data["Word"]
+    return None
 
 
 @app.route("/", methods=["GET", "POST"])
@@ -126,7 +120,10 @@ def predict():
         if not file:
             return
         img_bytes = file.read()
-        return jsonify(pose_model(img_bytes))
+        val = pose_model(img_bytes)
+        text = query_firebase(val)
+        products = request_search(text)
+        return jsonify(products)
 
     return render_template("index.html")
 
@@ -136,6 +133,7 @@ if __name__ == "__main__":
         description="Flask app exposing yolov5 models")
     parser.add_argument("--port", default=2808, type=int, help="port number")
     args = parser.parse_args()
+
     # load model
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     model = torch.load(opt['weights'], map_location=device)['model']
@@ -147,6 +145,5 @@ if __name__ == "__main__":
         # half() turns predictions into float16 tensors
         # which significantly lowers inference time
         model.half().to(device)
-
     # debug=True causes Restarting with stat
     app.run(host="0.0.0.0", port=args.port)
